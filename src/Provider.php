@@ -203,14 +203,12 @@ class Provider extends AbstractProvider
     {
         $accessToken = $token instanceof AccessToken ? $token->getToken() : (string) $token;
 
-        $apiVersion = (string) config('services.vkid.api_version', '5.199');
-
-        $resp = Http::timeout(10)->get('https://id.vk.ru/oauth2/user_info', [
+        $resp = Http::timeout(10)->post('https://id.vk.ru/oauth2/user_info', [
             'client_id' => $this->clientId,
             'access_token' => $accessToken,
         ])->json();
 
-        alt_log()->file('debug')->debug('getUserByToken', [$resp]);
+        alt_log()->file('debug')->debug('getUserByToken', [$resp, $accessToken, $this->clientId]);
 
         $u = $resp['user'] ?? null;
 
