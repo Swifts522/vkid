@@ -208,8 +208,6 @@ class Provider extends AbstractProvider
             'access_token' => $accessToken,
         ])->json();
 
-        alt_log()->file('debug')->debug('getUserByToken', [$resp, $accessToken, $this->clientId]);
-
         $u = $resp['user'] ?? null;
 
         return $u ?: [];
@@ -225,8 +223,6 @@ class Provider extends AbstractProvider
      */
     protected function mapUserToObject(array $u): User
     {
-        alt_log()->file('debug')->debug('mapUserToObject', $u);
-
         return (new User())->setRaw($u)->map([
             'id'       => (string) $u['user_id'],
             'nickname' => ! empty($u['user_id']) ? (string) ('id'.$u['user_id']) : null,
