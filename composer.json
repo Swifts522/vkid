@@ -1,5 +1,5 @@
 {
-  "name": "movemoveapp/vkid",
+  "name": "swifts522/vkid",
   "description": "VK ID OAuth 2.1 (id.vk.ru) Socialite provider with PKCE (cache-based, stateless-friendly).",
   "type": "library",
   "license": "MIT",
