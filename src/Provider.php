@@ -205,13 +205,12 @@ class Provider extends AbstractProvider
 
         $apiVersion = (string) config('services.vkid.api_version', '5.199');
 
-        $resp = Http::timeout(10)->get('https://api.vk.com/method/users.get', [
+        $resp = Http::timeout(10)->get('https://id.vk.ru/oauth2/user_info', [
+            'client_id' => $this->clientId,
             'access_token' => $accessToken,
-            'fields'       => 'id,screen_name,photo_200,first_name,last_name,domain',
-            'v'            => $apiVersion,
         ])->json();
 
-        $u = $resp['response'][0] ?? null;
+        $u = $resp['user'] ?? null;
 
         return $u ?: [];
     }
@@ -226,32 +225,12 @@ class Provider extends AbstractProvider
      */
     protected function mapUserToObject(array $u): User
     {
-        $email = null;
-        $phone = null;
-
-        // accessTokenResponseBody is set by AbstractProvider; normalize to array.
-        $body = $this->accessTokenResponseBody ?? null;
-        if (is_string($body)) {
-            $decoded = json_decode($body, true);
-            $body    = is_array($decoded) ? $decoded : [];
-        }
-
-        if (is_array($body) && !empty($body['id_token'])) {
-            $email = $this->emailFromIdToken($body['id_token']);
-            $phone = $this->phoneFromIdToken($body['id_token']);
-        }
-
-        // Expose extras through raw payload (accessible via $user->user['phone']).
-        if ($phone !== null) {
-            $u['phone'] = $phone;
-        }
-
         return (new User())->setRaw($u)->map([
-            'id'       => (string) ($u['id'] ?? ''),
-            'nickname' => $u['screen_name'] ?? null,
+            'id'       => (string) $u['user_id'],
+            'nickname' => ! empty($u['user_id']) ? (string) ('id'.$u['user_id']) : null,
             'name'     => trim(($u['first_name'] ?? '') . ' ' . ($u['last_name'] ?? '')) ?: null,
-            'email'    => $email,                     // may be null
-            'avatar'   => $u['photo_200'] ?? null,
+            'email'    => $u['email'] ?? null,  // may be null
+            'avatar'   => $u['avatar'] ?? null,
         ]);
     }
 
@@ -296,45 +275,5 @@ class Provider extends AbstractProvider
     protected function codeChallengeS256(string $verifier): string
     {
         return rtrim(strtr(base64_encode(hash('sha256', $verifier, true)), '+/', '-_'), '=');
-    }
-
-    /**
-     * Extract email from id_token (when present).
-     *
-     * @param string $jwt
-     * @return string|null
-     */
-    protected function emailFromIdToken(string $jwt): ?string
-    {
-        $parts = explode('.', $jwt);
-        if (count($parts) !== 3) {
-            return null;
-        }
-
-        $payload = json_decode(base64_decode(strtr($parts[1], '-_', '+/')), true);
-
-        return is_array($payload) ? ($payload['email'] ?? null) : null;
-    }
-
-    /**
-     * Extract phone from id_token (when scope/permissions allow).
-     * Common keys observed: "phone" or "phone_number".
-     *
-     * @param string $jwt
-     * @return string|null
-     */
-    protected function phoneFromIdToken(string $jwt): ?string
-    {
-        $parts = explode('.', $jwt);
-        if (count($parts) !== 3) {
-            return null;
-        }
-
-        $payload = json_decode(base64_decode(strtr($parts[1], '-_', '+/')), true);
-        if (!is_array($payload)) {
-            return null;
-        }
-
-        return $payload['phone'] ?? ($payload['phone_number'] ?? null);
     }
 }
